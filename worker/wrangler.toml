@@ -1,0 +1,8 @@
+name = "mi-cole-notion-sync"
+main = "index.js"
+compatibility_date = "2026-10-29"
+workers_dev = true
+
+[vars]
+NOTION_DATA_SOURCE_ID = "e3e099a7-4932-43d1-833a-5e0fceb7783d"
+ALLOWED_ORIGIN = "https://krvingonzalez7-hub.github.io"
