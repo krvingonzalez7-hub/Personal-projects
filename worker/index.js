@@ -1,5 +1,10 @@
 const API_VERSION = "2026-03-11";
 const MAX_TASKS = 200;
+let lastNotionCall = 0;
+
+function pause(ms) {
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
 
 function response(body, status, origin) {
   return new Response(JSON.stringify(body), {
@@ -73,7 +78,11 @@ function taskProperties(task, deleted) {
   return props;
 }
 
-async function notionRequest(env, path, method, body) {
+async function notionRequest(env, path, method, body, attempt) {
+  const elapsed = Date.now() - lastNotionCall;
+  if (elapsed < 350) await pause(350 - elapsed);
+  lastNotionCall = Date.now();
+
   const result = await fetch("https://api.notion.com/v1/" + path, {
     method: method,
     headers: {
@@ -83,6 +92,14 @@ async function notionRequest(env, path, method, body) {
     },
     body: body ? JSON.stringify(body) : undefined
   });
+
+  if (result.status === 429 && (attempt || 0) < 3) {
+    const retryAfter = Number(result.headers.get("retry-after")) * 1000 || 1000 * ((attempt || 0) + 1);
+    await result.body.cancel();
+    await pause(Math.min(retryAfter, 8000));
+    return notionRequest(env, path, method, body, (attempt || 0) + 1);
+  }
+
   const data = await result.json().catch(function () { return {}; });
   if (!result.ok) {
     const error = new Error("Notion API request failed with status " + result.status);
